@@ -26,7 +26,6 @@ Here is the list of other reference apps:
 
 ## References
 * [Receiver Reference](https://developers.google.com/cast/docs/reference/caf_receiver/)
-* [Media Player Library Reference](https://developers.google.com/cast/docs/player)
 * [Design Checklist](http://developers.google.com/cast/docs/design_checklist)
 
 ## How to report bugs
