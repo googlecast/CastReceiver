@@ -26,8 +26,11 @@ const playerManager = context.getPlayerManager();
 // Listen and log all Core Events
 playerManager.addEventListener(cast.framework.events.category.CORE,
   event => {
+    console.log("Core event: " + event.type);
     console.log(event);
   });
+
+const playbackConfig = new cast.framework.PlaybackConfig();
 
 // Set the player to start playback as soon as there are five seconds of
 // media content buffered. Default is 10.
