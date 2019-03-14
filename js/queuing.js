@@ -1,5 +1,5 @@
 /*
-Copyright 2018 Google LLC. All Rights Reserved.
+Copyright 2019 Google LLC. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,14 +26,13 @@ class CastQueue extends cast.framework.QueueBase {
     item.media.streamType = cast.framework.messages.StreamType.BUFFERED;
     item.media.contentType = "video/mp4";
     item.media.metadata = new cast.framework.messages.MovieMediaMetadata();
-    item.media.metadata = {
-      title: "Big Buck Bunny (2008)",
-      subtitle: "Big Buck Bunny tells the story of a giant rabbit with a heart bigger than " +
-      "himself. When one sunny day three rodents rudely harass him, something " +
-      "snaps... and the rabbit ain't no bunny anymore! In the typical cartoon " +
-      "tradition he prepares the nasty rodents a comical revenge.",
-      images: [new cast.framework.messages.Image("https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg")]
-    };
+    item.media.metadata.title = "Big Buck Bunny (2008)";
+    item.media.metadata.subtitle = "Big Buck Bunny tells the story of a giant rabbit with a heart bigger than " +
+        "himself. When one sunny day three rodents rudely harass him, something " +
+        "snaps... and the rabbit ain't no bunny anymore! In the typical cartoon " +
+        "tradition he prepares the nasty rodents a comical revenge.";
+    item.media.metadata.images =
+        [new cast.framework.messages.Image("https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg")];
 
     this.sampleItem = item;
   }
