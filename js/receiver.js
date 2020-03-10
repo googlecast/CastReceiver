@@ -25,6 +25,9 @@ import { CastQueue } from './queuing.js';
 const context = cast.framework.CastReceiverContext.getInstance();
 const playerManager = context.getPlayerManager();
 
+// enable debug log
+context.setLoggerLevel(cast.framework.LoggerLevel.DEBUG);
+
 // Listen and log all Core Events.
 playerManager.addEventListener(cast.framework.events.category.CORE,
   event => {

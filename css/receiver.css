@@ -41,7 +41,7 @@ cast-media-player {
 /* Sample Overlay Text                               */
 /* ------------------------------------------------- */
 cast-media-player:after {
-  content: "SAMPLE";
+  content: "Simple Joy";
   position: absolute;
   left: 0;
   right: 0;
