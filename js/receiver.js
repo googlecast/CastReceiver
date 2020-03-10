@@ -27,12 +27,21 @@ const playerManager = context.getPlayerManager();
 
 // enable debug log
 context.setLoggerLevel(cast.framework.LoggerLevel.DEBUG);
+const castDebugLogger = cast.debug.CastDebugLogger.getInstance();
+
+// Enable debug logger and show a warning on receiver
+// NOTE: make sure it is disabled on production
+castDebugLogger.setEnabled(true);
+
+// Show debug overlay
+castDebugLogger.showDebugLogs(true);
 
 // Listen and log all Core Events.
 playerManager.addEventListener(cast.framework.events.category.CORE,
   event => {
     console.log("Core event: " + event.type);
     console.log(event);
+    castDebugLogger.info("ANALYTICS", event);
   });
 
 playerManager.addEventListener(
@@ -44,8 +53,15 @@ playerManager.addEventListener(
 // Intercept the LOAD request to be able to read in a contentId and get data.
 playerManager.setMessageInterceptor(
   cast.framework.messages.MessageType.LOAD, loadRequestData => {
+    castDebugLogger.info('MyAPP.LOG', 'Intercepting LOAD request');
     return loadRequestData;
   });
+
+// Set verbosity level for custom tags
+castDebugLogger.loggerLevelByTags = {
+    'MyAPP.LOG': cast.framework.LoggerLevel.WARNING,
+    'ANALYTICS': cast.framework.LoggerLevel.INFO,
+};
 
 const playbackConfig = new cast.framework.PlaybackConfig();
 
