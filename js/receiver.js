@@ -92,6 +92,7 @@ controls.assignButton(
 )
 
 context.start({
+  maxInactivity: 3600,
   queue: new CastQueue(),
   playbackConfig: playbackConfig,
   supportedCommands: cast.framework.messages.Command.ALL_BASIC_MEDIA |
