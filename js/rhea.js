@@ -1,4 +1,4 @@
-require=(function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+(function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 (function (process,Buffer){
 /*
  * Copyright 2015 Red Hat Inc.
@@ -817,7 +817,120 @@ delegate_to_session('flow');
 module.exports = Connection;
 
 }).call(this,require('_process'),require("buffer").Buffer)
-},{"./endpoint.js":2,"./errors.js":3,"./frames.js":6,"./log.js":8,"./sasl.js":10,"./session.js":11,"./transport.js":13,"./util.js":15,"_process":27,"buffer":19,"events":22,"fs":18,"net":18,"os":25,"path":26,"tls":18}],2:[function(require,module,exports){
+},{"./endpoint.js":3,"./errors.js":4,"./frames.js":7,"./log.js":9,"./sasl.js":11,"./session.js":12,"./transport.js":14,"./util.js":16,"_process":28,"buffer":20,"events":23,"fs":19,"net":19,"os":26,"path":27,"tls":19}],2:[function(require,module,exports){
+(function (process){
+/*
+ * Copyright 2015 Red Hat Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+'use strict';
+
+var Connection = require('./connection.js');
+var log = require('./log.js');
+var sasl = require('./sasl.js');
+var util = require('./util.js');
+var eventTypes = require('./eventTypes.js');
+
+var net = require('net');
+var tls = require('tls');
+var EventEmitter = require('events').EventEmitter;
+
+var Container = function (options) {
+    this.options = options ? Object.create(options) : {};
+    if (!this.options.id) {
+        this.options.id = util.generate_uuid();
+    }
+    this.id = this.options.id;
+    this.sasl_server_mechanisms = sasl.server_mechanisms();
+};
+
+Container.prototype = Object.create(EventEmitter.prototype);
+Container.prototype.constructor = Container;
+Container.prototype.dispatch = function(name) {
+    log.events('[%s] Container got event: ' + name, this.id);
+    EventEmitter.prototype.emit.apply(this, arguments);
+    if (this.listeners(name).length) {
+        return true;
+    } else {
+        return false;
+    }
+};
+
+Container.prototype.connect = function (options) {
+    this.connection = new Connection(options, this);
+    return this.connection.connect();
+};
+Container.prototype.disconnect = function () { this.connection.close(); };
+
+Container.prototype.create_connection = function (options) {
+    return new Connection(options, this);
+};
+
+Container.prototype.listen = function (options) {
+    var container = this;
+    var server;
+    if (options.transport === undefined || options.transport === 'tcp') {
+        server = net.createServer();
+        server.on('connection', function (socket) {
+            new Connection(options, container).accept(socket);
+        });
+    } else if (options.transport === 'tls' || options.transport === 'ssl') {
+        server = tls.createServer(options);
+        server.on('secureConnection', function (socket) {
+            new Connection(options, container).accept(socket);
+        });
+    } else {
+        throw Error('Unrecognised transport: ' + options.transport);
+    }
+    if (process.version.match(/v0\.10\.\d+/)) {
+        server.listen(options.port, options.host);
+    } else {
+        server.listen(options);
+    }
+    return server;
+};
+
+Container.prototype.create_container = function (options) {
+    return new Container(options);
+};
+
+Container.prototype.get_option = function (name, default_value) {
+    if (this.options[name] !== undefined) return this.options[name];
+    else return default_value;
+};
+
+Container.prototype.generate_uuid = util.generate_uuid;
+Container.prototype.string_to_uuid = util.string_to_uuid;
+Container.prototype.uuid_to_string = util.uuid_to_string;
+var ws = require('./ws.js');
+Container.prototype.websocket_accept = function(socket, options) {
+    new Connection(options, this).accept(ws.wrap(socket));
+};
+Container.prototype.websocket_connect = ws.connect;
+Container.prototype.filter = require('./filter.js');
+Container.prototype.types = require('./types.js');
+Container.prototype.message = require('./message.js');
+Container.prototype.sasl = sasl;
+Container.prototype.ReceiverEvents = eventTypes.ReceiverEvents;
+Container.prototype.SenderEvents = eventTypes.SenderEvents;
+Container.prototype.SessionEvents = eventTypes.SessionEvents;
+Container.prototype.ConnectionEvents = eventTypes.ConnectionEvents;
+
+module.exports = new Container();
+
+}).call(this,require('_process'))
+},{"./connection.js":1,"./eventTypes.js":5,"./filter.js":6,"./log.js":9,"./message.js":10,"./sasl.js":11,"./types.js":15,"./util.js":16,"./ws.js":17,"_process":28,"events":23,"net":19,"tls":19}],3:[function(require,module,exports){
 /*
  * Copyright 2015 Red Hat Inc.
  *
@@ -940,7 +1053,7 @@ EndpointState.prototype.need_close = function () {
 
 module.exports = EndpointState;
 
-},{}],3:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 /*
  * Copyright 2015 Red Hat Inc.
  *
@@ -1000,7 +1113,7 @@ module.exports = {
     ConnectionError: ConnectionError
 };
 
-},{"util":30}],4:[function(require,module,exports){
+},{"util":31}],5:[function(require,module,exports){
 /*
  * Copyright 2018 Red Hat Inc.
  *
@@ -1179,7 +1292,7 @@ module.exports = {
     ConnectionEvents: ConnectionEvents
 };
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 /*
  * Copyright 2015 Red Hat Inc.
  *
@@ -1205,7 +1318,7 @@ module.exports = {
     }
 };
 
-},{"./types.js":14}],6:[function(require,module,exports){
+},{"./types.js":15}],7:[function(require,module,exports){
 /*
  * Copyright 2015 Red Hat Inc.
  *
@@ -1530,7 +1643,7 @@ define_frame(frames.TYPE_SASL, sasl_outcome);
 
 module.exports = frames;
 
-},{"./errors.js":3,"./types.js":14}],7:[function(require,module,exports){
+},{"./errors.js":4,"./types.js":15}],8:[function(require,module,exports){
 (function (process,Buffer){
 /*
  * Copyright 2015 Red Hat Inc.
@@ -1918,7 +2031,7 @@ Receiver.prototype.set_credit_window = function(credit_window) {
 module.exports = {'Sender': Sender, 'Receiver':Receiver};
 
 }).call(this,require('_process'),require("buffer").Buffer)
-},{"./endpoint.js":2,"./frames.js":6,"./log.js":8,"./message.js":9,"./terminus.js":12,"_process":27,"buffer":19,"events":22,"util":30}],8:[function(require,module,exports){
+},{"./endpoint.js":3,"./frames.js":7,"./log.js":9,"./message.js":10,"./terminus.js":13,"_process":28,"buffer":20,"events":23,"util":31}],9:[function(require,module,exports){
 /*
  * Copyright 2015 Red Hat Inc.
  *
@@ -1955,7 +2068,7 @@ module.exports = {
     'io' : debug('rhea:io')
 };
 
-},{"debug":20}],9:[function(require,module,exports){
+},{"debug":21}],10:[function(require,module,exports){
 /*
  * Copyright 2015 Red Hat Inc.
  *
@@ -2250,7 +2363,7 @@ define_outcome({
 
 module.exports = message;
 
-},{"./log.js":8,"./types.js":14}],10:[function(require,module,exports){
+},{"./log.js":9,"./types.js":15}],11:[function(require,module,exports){
 /*
  * Copyright 2015 Red Hat Inc.
  *
@@ -2666,7 +2779,7 @@ module.exports = {
     }
 };
 
-},{"./errors.js":3,"./frames.js":6,"./transport.js":13,"./util.js":15}],11:[function(require,module,exports){
+},{"./errors.js":4,"./frames.js":7,"./transport.js":14,"./util.js":16}],12:[function(require,module,exports){
 (function (process,Buffer){
 /*
  * Copyright 2015 Red Hat Inc.
@@ -3422,7 +3535,7 @@ Session.prototype.on_transfer = function (frame) {
 module.exports = Session;
 
 }).call(this,require('_process'),require("buffer").Buffer)
-},{"./endpoint.js":2,"./frames.js":6,"./link.js":7,"./log.js":8,"./message.js":9,"./types.js":14,"./util.js":15,"_process":27,"buffer":19,"events":22,"util":30}],12:[function(require,module,exports){
+},{"./endpoint.js":3,"./frames.js":7,"./link.js":8,"./log.js":9,"./message.js":10,"./types.js":15,"./util.js":16,"_process":28,"buffer":20,"events":23,"util":31}],13:[function(require,module,exports){
 /*
  * Copyright 2015 Red Hat Inc.
  *
@@ -3498,7 +3611,7 @@ define_terminus({
 
 module.exports = terminus;
 
-},{"./types.js":14}],13:[function(require,module,exports){
+},{"./types.js":15}],14:[function(require,module,exports){
 /*
  * Copyright 2015 Red Hat Inc.
  *
@@ -3616,7 +3729,7 @@ Transport.prototype.read = function (buffer) {
 
 module.exports = Transport;
 
-},{"./errors.js":3,"./frames.js":6,"./log.js":8,"./util.js":15}],14:[function(require,module,exports){
+},{"./errors.js":4,"./frames.js":7,"./log.js":9,"./util.js":16}],15:[function(require,module,exports){
 (function (Buffer){
 /*
  * Copyright 2015 Red Hat Inc.
@@ -4582,7 +4695,7 @@ add_type({
 module.exports = types;
 
 }).call(this,require("buffer").Buffer)
-},{"./errors.js":3,"./util.js":15,"buffer":19}],15:[function(require,module,exports){
+},{"./errors.js":4,"./util.js":16,"buffer":20}],16:[function(require,module,exports){
 (function (Buffer){
 /*
  * Copyright 2015 Red Hat Inc.
@@ -4680,7 +4793,7 @@ util.is_defined = function (field) {
 module.exports = util;
 
 }).call(this,require("buffer").Buffer)
-},{"./errors.js":3,"buffer":19}],16:[function(require,module,exports){
+},{"./errors.js":4,"buffer":20}],17:[function(require,module,exports){
 (function (Buffer){
 /*
  * Copyright 2015 Red Hat Inc.
@@ -4767,7 +4880,7 @@ module.exports = {
 };
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":19}],17:[function(require,module,exports){
+},{"buffer":20}],18:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -4921,9 +5034,9 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],18:[function(require,module,exports){
-
 },{}],19:[function(require,module,exports){
+
+},{}],20:[function(require,module,exports){
 (function (Buffer){
 /*!
  * The buffer module from node.js, for the browser.
@@ -6704,7 +6817,7 @@ function numberIsNaN (obj) {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"base64-js":17,"buffer":19,"ieee754":23}],20:[function(require,module,exports){
+},{"base64-js":18,"buffer":20,"ieee754":24}],21:[function(require,module,exports){
 (function (process){
 "use strict";
 
@@ -6888,7 +7001,7 @@ formatters.j = function (v) {
 
 
 }).call(this,require('_process'))
-},{"./common":21,"_process":27}],21:[function(require,module,exports){
+},{"./common":22,"_process":28}],22:[function(require,module,exports){
 "use strict";
 
 /**
@@ -7139,7 +7252,7 @@ function setup(env) {
 module.exports = setup;
 
 
-},{"ms":24}],22:[function(require,module,exports){
+},{"ms":25}],23:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -7664,7 +7777,7 @@ function functionBindPolyfill(context) {
   };
 }
 
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = (nBytes * 8) - mLen - 1
@@ -7750,7 +7863,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],24:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 /**
  * Helpers.
  */
@@ -7914,7 +8027,7 @@ function plural(ms, msAbs, n, name) {
   return Math.round(ms / n) + ' ' + name + (isPlural ? 's' : '');
 }
 
-},{}],25:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 exports.endianness = function () { return 'LE' };
 
 exports.hostname = function () {
@@ -7965,7 +8078,7 @@ exports.homedir = function () {
 	return '/'
 };
 
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 (function (process){
 // .dirname, .basename, and .extname methods are extracted from Node.js v8.11.1,
 // backported and transplited with Babel, with backwards-compat fixes
@@ -8271,7 +8384,7 @@ var substr = 'ab'.substr(-1) === 'b'
 ;
 
 }).call(this,require('_process'))
-},{"_process":27}],27:[function(require,module,exports){
+},{"_process":28}],28:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -8457,7 +8570,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],28:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -8482,14 +8595,14 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],29:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],30:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -9079,117 +9192,24 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":29,"_process":27,"inherits":28}],"rhea":[function(require,module,exports){
-(function (process){
-/*
- * Copyright 2015 Red Hat Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-'use strict';
+},{"./support/isBuffer":30,"_process":28,"inherits":29}],32:[function(require,module,exports){
+function potentiallyBuggyCode() {
 
-var Connection = require('./connection.js');
-var log = require('./log.js');
-var sasl = require('./sasl.js');
-var util = require('./util.js');
-var eventTypes = require('./eventTypes.js');
+    debugger;
+    // do potentially buggy stuff to examine, step through, etc.
+}
+potentiallyBuggyCode();
+var container = require('rhea');
 
-var net = require('net');
-var tls = require('tls');
-var EventEmitter = require('events').EventEmitter;
+container.on('message', function (context) {
+    console.log(context.message.body);
+    context.connection.close();
+});
+container.once('sendable', function (context) {
+    context.sender.send({body:'Hello World!'});
+});
+var connection = container.connect({'port':5672});
+connection.open_receiver('examples');
+connection.open_sender('examples');
 
-var Container = function (options) {
-    this.options = options ? Object.create(options) : {};
-    if (!this.options.id) {
-        this.options.id = util.generate_uuid();
-    }
-    this.id = this.options.id;
-    this.sasl_server_mechanisms = sasl.server_mechanisms();
-};
-
-Container.prototype = Object.create(EventEmitter.prototype);
-Container.prototype.constructor = Container;
-Container.prototype.dispatch = function(name) {
-    log.events('[%s] Container got event: ' + name, this.id);
-    EventEmitter.prototype.emit.apply(this, arguments);
-    if (this.listeners(name).length) {
-        return true;
-    } else {
-        return false;
-    }
-};
-
-Container.prototype.connect = function (options) {
-    this.connection = new Connection(options, this);
-    return this.connection.connect();
-};
-Container.prototype.disconnect = function () { this.connection.close(); };
-
-Container.prototype.create_connection = function (options) {
-    return new Connection(options, this);
-};
-
-Container.prototype.listen = function (options) {
-    var container = this;
-    var server;
-    if (options.transport === undefined || options.transport === 'tcp') {
-        server = net.createServer();
-        server.on('connection', function (socket) {
-            new Connection(options, container).accept(socket);
-        });
-    } else if (options.transport === 'tls' || options.transport === 'ssl') {
-        server = tls.createServer(options);
-        server.on('secureConnection', function (socket) {
-            new Connection(options, container).accept(socket);
-        });
-    } else {
-        throw Error('Unrecognised transport: ' + options.transport);
-    }
-    if (process.version.match(/v0\.10\.\d+/)) {
-        server.listen(options.port, options.host);
-    } else {
-        server.listen(options);
-    }
-    return server;
-};
-
-Container.prototype.create_container = function (options) {
-    return new Container(options);
-};
-
-Container.prototype.get_option = function (name, default_value) {
-    if (this.options[name] !== undefined) return this.options[name];
-    else return default_value;
-};
-
-Container.prototype.generate_uuid = util.generate_uuid;
-Container.prototype.string_to_uuid = util.string_to_uuid;
-Container.prototype.uuid_to_string = util.uuid_to_string;
-var ws = require('./ws.js');
-Container.prototype.websocket_accept = function(socket, options) {
-    new Connection(options, this).accept(ws.wrap(socket));
-};
-Container.prototype.websocket_connect = ws.connect;
-Container.prototype.filter = require('./filter.js');
-Container.prototype.types = require('./types.js');
-Container.prototype.message = require('./message.js');
-Container.prototype.sasl = sasl;
-Container.prototype.ReceiverEvents = eventTypes.ReceiverEvents;
-Container.prototype.SenderEvents = eventTypes.SenderEvents;
-Container.prototype.SessionEvents = eventTypes.SessionEvents;
-Container.prototype.ConnectionEvents = eventTypes.ConnectionEvents;
-
-module.exports = new Container();
-
-}).call(this,require('_process'))
-},{"./connection.js":1,"./eventTypes.js":4,"./filter.js":5,"./log.js":8,"./message.js":9,"./sasl.js":10,"./types.js":14,"./util.js":15,"./ws.js":16,"_process":27,"events":22,"net":18,"tls":18}]},{},[]);
+},{"rhea":2}]},{},[32]);
