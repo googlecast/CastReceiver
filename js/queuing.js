@@ -36,27 +36,6 @@ castDebugLogger.loggerLevelByTags[LOG_QUEUE_TAG] =
 class CastQueue extends cast.framework.QueueBase {
   constructor() {
     super();
-
-    const item = new cast.framework.messages.QueueItem();
-    item.media = new cast.framework.messages.MediaInformation();
-    item.media.contentUrl = 'https://commondatastorage.googleapis.com/' + 
-      'gtv-videos-bucket/sample/BigBuckBunny.mp4';
-    item.media.streamType = cast.framework.messages.StreamType.BUFFERED;
-    item.media.contentType = 'video/mp4';
-    item.media.metadata = new cast.framework.messages.MovieMediaMetadata();
-    item.media.metadata.title = 'Big Buck Bunny (2008)';
-    item.media.metadata.subtitle = 'Big Buck Bunny tells the story of a ' +
-      'giant rabbit with a heart bigger than himself. When one sunny day ' +
-      'three rodents rudely harass him, something snaps... and the rabbit ' +
-      'ain\'t no bunny anymore! In the typical cartoon tradition he prepares ' +
-      'the nasty rodents a comical revenge.';
-    item.media.metadata.images =
-        [new cast.framework.messages.Image(
-          'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/' + 
-            'images/BigBuckBunny.jpg'
-        )];
-
-    this.sampleItem = item;
   }
 
   /**
@@ -87,10 +66,14 @@ class CastQueue extends cast.framework.QueueBase {
   * are simply appended to the end of the queue.
   * @param {number} referenceItemId
   * @return {!Array<cast.framework.QueueItem>}
-  */
+  **/
   nextItems(referenceItemId) {
     // Return sample content.
-    return [this.sampleItem];
+    let item = new cast.framework.messages.QueueItem();
+    item.media = new cast.framework.messages.MediaInformation();
+    item.media.entity = 'https://sample.com/videos/bbb';
+    item.media.customData = { "isSuggested": true };
+    return [item];
   }
 
   /**
@@ -99,10 +82,14 @@ class CastQueue extends cast.framework.QueueBase {
   * simply appended to beginning of the queue.
   * @param {number} referenceItemId
   * @return {!Array<cast.framework.QueueItem>}
-  */
+  **/
   prevItems(referenceItemId) {
     // Return sample content.
-    return [this.sampleItem];
+    let item = new cast.framework.messages.QueueItem();
+    item.media = new cast.framework.messages.MediaInformation();
+    item.media.entity = 'https://sample.com/videos/ed';
+    item.media.customData = { "isSuggested": true };
+    return [item];
   }
 };
 
