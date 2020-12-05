@@ -21,7 +21,7 @@ limitations under the License.
  * different analytics services
  */
 
-//Imports a mapping of event types for easier reference
+// Imports a mapping of event types for easier reference
 import { CastEventType, EventOwner } from './cast_event_types.js';
 
 /**
