@@ -48,7 +48,7 @@ class CastQueue extends cast.framework.QueueBase {
       let queueData = loadRequestData.queueData;
 
       // Create a new queue with media from load request if one doesn't exist.
-      if (!queueData) {
+      if (!queueData || !queueData.items || !queueData.items.length) {
         castDebugLogger.info(LOG_QUEUE_TAG,
           'Creating a new queue with media from the load request');
         queueData = new cast.framework.messages.QueueData();

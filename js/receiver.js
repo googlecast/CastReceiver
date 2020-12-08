@@ -27,8 +27,9 @@ import { AdsTracker, SenderTracker, ContentTracker } from './cast_analytics.js';
 /**
  * Constants to be used for fetching media by entity from sample repository.
  */
-const ENTITY_REGEX = '([^\/]+$)';
-const CONTENT_URL = 'https://storage.googleapis.com/cpe-sample-media/content.json';
+const ID_REGEX = '\/?([^\/]+)\/?$';
+const CONTENT_URL = 
+  'https://storage.googleapis.com/cpe-sample-media/content.json';
 
 const context = cast.framework.CastReceiverContext.getInstance();
 const playerManager = context.getPlayerManager();
@@ -106,7 +107,9 @@ const contentTracker = new ContentTracker();
  * mediainformation. Usually obtained through a load interceptor.
  */
 function addBreaks(mediaInformation) {
-  return fetchMediaByEntity('https://sample.com/ads/fbb_ad')
+  castDebugLogger.debug(LOG_RECEIVER_TAG, "addBreaks: " +
+    JSON.stringify(mediaInformation));
+  return fetchMediaById('fbb_ad')
   .then((clip1) => {
     mediaInformation.breakClips = [
       {
@@ -130,31 +133,27 @@ function addBreaks(mediaInformation) {
 
 /**
  * Obtains media from a remote repository.
- * @param  {Number} Entity that contains the key to the json object's media id.
+ * @param  {Number} Entity or ID that contains a key to media in JSON hosted
+ * by CONTENT_URL.
  * @return {Promise} Contains the media information of the desired entity.
  */
-function fetchMediaByEntity(entity) {
-  console.log(`Entity: ${entity}`);
-  let key = entity.match(ENTITY_REGEX)[0];
-  console.log(`Key: ${key}`);
-  if (!key) {
-    reject(`Unrecognized entity format ${entity}`);
-  }
+function fetchMediaById(id) {
+  castDebugLogger.debug(LOG_RECEIVER_TAG, "fetching id: " + id);
 
   return new Promise((accept, reject) => {
     fetch(CONTENT_URL)
     .then((response) => response.json())
     .then((obj) => {
       if (obj) {
-        if (obj[key]) {
-          accept(obj[key]);
+        if (obj[id]) {
+          accept(obj[id]);
         }
         else {
-          reject(`${key} not found in repository`);
+          reject(`${id} not found in repository`);
         }
       }
       else {
-        reject('content repository not found');
+        reject('Content repository not found.');
       }
     });
   });
@@ -162,61 +161,70 @@ function fetchMediaByEntity(entity) {
 
 
 /**
- * Intercept the LOAD request to be able to read in a contentId and get data.
+ * Intercept the LOAD request to load and set the contentUrl and add ads.
  */
 playerManager.setMessageInterceptor(
   cast.framework.messages.MessageType.LOAD, loadRequestData => {
     castDebugLogger.debug(LOG_RECEIVER_TAG,
-      `LOAD interceptor loadRequestData: ${JSON.stringify(loadRequestData)}`);
+      `loadRequestData: ${JSON.stringify(loadRequestData)}`);
+    
+    // If the loadRequestData is incomplete return an error message
     if (!loadRequestData || !loadRequestData.media) {
       const error = new cast.framework.messages.ErrorData(
         cast.framework.messages.ErrorType.LOAD_FAILED);
       error.reason = cast.framework.messages.ErrorReason.INVALID_REQUEST;
-      castDebugLogger.error(LOG_RECEIVER_TAG, 'Invalid load request');
       return error;
     }
-    if (!loadRequestData.media.contentUrl) {
-      castDebugLogger.warn(LOG_RECEIVER_TAG,
-        'Playable URL is missing. Using ContentId as a fallback.');
-    }
-    if (!loadRequestData.media.contentId) {
-        castDebugLogger.warn(LOG_RECEIVER_TAG,
-          'Missing Content ID and Playable URL. Using entity as a fallback');
+
+    // check all content source fields for asset URL or ID
+    let source = loadRequestData.media.contentUrl
+      || loadRequestData.media.entity || loadRequestData.media.contentId;
+
+    // If there is no source or a malformed ID then return an error.
+    if (!source || source == "" || !source.match(ID_REGEX)) {
+      let error = new cast.framework.messages.ErrorData(
+        cast.framework.messages.ErrorType.LOAD_FAILED);
+      error.reason = cast.framework.messages.ErrorReason.INVALID_REQUEST;
+      return error;
     }
 
-    if (!loadRequestData.media.entity && loadRequestData.media.contentId) {
-      loadRequestData.media.entity = loadRequestData.media.contentId;
-      castDebugLogger.info(LOG_RECEIVER_TAG,
-          'Setting entity to contentId');
-    }
-    if (loadRequestData.media.entity) {
-      castDebugLogger.info(LOG_RECEIVER_TAG,
-          `Loading entity ${loadRequestData.media.entity} from API`);
-      return new Promise((accept, reject) => {
-        addBreaks(loadRequestData.media)
-        .then(() => fetchMediaByEntity(loadRequestData.media.entity))
+    let sourceId = source.match(ID_REGEX)[1];
+
+    // Add breaks to the media information and set the contentUrl
+    return addBreaks(loadRequestData.media)
+    .then(() => {
+      // If the source is a url that points to an asset don't fetch from backend
+      if (sourceId.includes('.')) {
+        castDebugLogger.debug(LOG_RECEIVER_TAG,
+          "Interceptor received full URL");
+        loadRequestData.media.contentUrl = source;
+        return loadRequestData;
+      }
+
+      // Fetch the contentUrl if provided an ID or entity URL
+      else {
+        castDebugLogger.debug(LOG_RECEIVER_TAG, "Interceptor received ID");
+        return fetchMediaById(sourceId)
         .then((item) => {
-          if (!item) {
-            reject();
-          }
-
           let metadata = new cast.framework.messages.GenericMediaMetadata();
           metadata.title = item.title;
           metadata.subtitle = item.description;
           loadRequestData.media.contentId = item.stream.dash;
           loadRequestData.media.contentType = 'application/dash+xml';
           loadRequestData.media.metadata = metadata;
-          accept(loadRequestData);
+          return loadRequestData;
         })
-      });
-    }
-    else {
-      castDebugLogger.error(LOG_RECEIVER_TAG,
-          "Request missing valid target: no contentUrl, contentId, or entity");
-    }
-
-    return loadRequestData;
-  });
+      }
+    })
+    .catch((errorMessage) => {
+      let error = new cast.framework.messages.ErrorData(
+        cast.framework.messages.ErrorType.LOAD_FAILED);
+      error.reason = cast.framework.messages.ErrorReason.INVALID_REQUEST;
+      castDebugLogger.error(LOG_RECEIVER_TAG, errorMessage);
+      return error;
+    });
+  }
+);
 
 const playbackConfig = new cast.framework.PlaybackConfig();
 
