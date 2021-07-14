@@ -7,17 +7,18 @@ This sample shows how to develop a fully Cast Design Checklist compliant receive
 [List of reference apps and tutorials](https://developers.google.com/cast/docs/downloads)
 
 ## Setup Instructions
-1. Get a Google Cast device and get it set up for development: https://developers.google.com/cast/docs/developers#setup_for_development.
-1. Upload the project to a website that can be accessed from your Chromecast. Later, when you publish your application, you will need to host so that it is accessible using HTTPS.
-1. Register an application on the [Google Cast SDK Developer Console](https://cast.google.com/publish). Enter the URL for the player.html. There is a button marked publish, if
-  you set that, then your receiver can be accessed by all devices, but it requires that you be serving using https.  Not publishing your app, lets you restrict the receiver to
-  devices that you specify and allows you to host on most development servers.
-1. If you haven't already done so, please register the serial # of your Google Cast device in the developer console as well.
-1. Using the Chromecast setup application, make sure [x] send your serial number to Google is checked.  This is the only way that you can access your unpublished receiver.
-  While you are in the Setup application, make a note of the IP address of your Chromecast. It will be helpful later if you wish to use the Chrome Remote Debugger.
-1. 15 minutes after you have updated the developers console, you should reboot your Chromecast, so that it picks up the changes.
-1. Enter the App ID of your receiver application into your sender application or one of our sample sender applications listed above.
-1. You should now be able to launch your receiver using a sender.
+1. [Set up your Google Cast devices](https://developers.google.com/cast/docs/developers#setup_for_development) using steps 1-3 depending on the device type.
+1. Host your Web Receiver app so that it is accessible using HTTPS.
+1. [Register your Web Receiver](https://developers.google.com/cast/docs/registration#register_your_application) as a Custom Receiver on the [Google Cast SDK Developer Console](https://cast.google.com/publish).
+    1. Enter your app name, URL to load when your app is launched, if it supports Guest Mode, and if casting to audio only devices is supported.
+    1. Add your Android TV app package name if Cast Connect is supported.
+    1. Add at least one sender under "Sender Details".
+    1. Optionally, list your Web Receiver so it can be used with [Intent to Join](https://developers.google.com/cast/docs/android_sender/intent_to_join#google_cast_developer_console_setup) and can be discovered by users.
+1. Once your app is ready, you will need to publish your app to allow all users to have access to your app. Until then, you can skip publishing to restrict the app to only devices listed in the [Cast SDK Developer Console](https://cast.google.com/publish/#/overview).
+1. Check to make sure all of your devices are listed in the developer console under "Cast Receiver Devices". If a device is not listed, [find your test device serial number](https://developers.google.com/cast/docs/registration#find_device_serial_number) and [register your device in the developer console](https://developers.google.com/cast/docs/registration#devices).
+1. Restart your test devices so they can discover your receiver.
+1. Now that your receiver is set up, enter the Web Receiver App ID into your sender application or one of our reference sender applications listed above.
+1. You should now be able to launch your receiver using a sender. Note that it may take up to 15 minutes for all of the above changes to propage through the system.
 1. If you wish to watch what's going on in the receiver, use the [Chrome Remote Debugger](https://developers.google.com/cast/docs/debugging#chrome).
 
 ## Documentation
