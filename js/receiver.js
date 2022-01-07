@@ -45,15 +45,23 @@ const castDebugLogger = cast.debug.CastDebugLogger.getInstance();
 /**
  * WARNING: Make sure to turn off debug logger for production release as it
  * may expose details of your app.
- * Uncomment below line to enable debug logger and show a 'DEBUG MODE' tag at
- * top left corner.
+ * Uncomment below line to enable debug logger, show a 'DEBUG MODE' tag at
+ * top left corner and show debug overlay.
  */
-// castDebugLogger.setEnabled(true);
+//  context.addEventListener(cast.framework.system.EventType.READY, () => {
+//   if (!castDebugLogger.debugOverlayElement_) {
+//     /**
+//      *  Enable debug logger and show a 'DEBUG MODE' tag at
+//      *  top left corner.
+//      */
+//       castDebugLogger.setEnabled(true);
 
-/**
- * Uncomment below line to show debug overlay.
- */
-// castDebugLogger.showDebugLogs(true);
+//     /**
+//      * Show debug overlay.
+//      */
+//       castDebugLogger.showDebugLogs(true);
+//   }
+// });
 
 /**
  * Set verbosity level for Core events.
