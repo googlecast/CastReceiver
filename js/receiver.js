@@ -1,5 +1,5 @@
-/*
-Copyright 2020 Google LLC. All Rights Reserved.
+/**
+Copyright 2022 Google LLC. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,35 +14,40 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/**
- * This sample demonstrates how to build your own Receiver for use with Google
- * Cast.
- */
 
 'use strict';
 
 import { CastQueue } from './queuing.js';
+import { MediaFetcher } from './media_fetcher.js';
 import { AdsTracker, SenderTracker, ContentTracker } from './cast_analytics.js';
 
 /**
- * Constants to be used for fetching media by entity from sample repository.
+ * @fileoverview This sample demonstrates how to build your own Web Receiver for
+ * use with Google Cast. The main receiver implementation is provided in this
+ * file which sets up access to the CastReceiverContext and PlayerManager. Some
+ * added functionality can be enabled by uncommenting some of the code blocks
+ * below.
  */
-const ID_REGEX = '\/?([^\/]+)\/?$';
-const CONTENT_URL = 
-  'https://storage.googleapis.com/cpe-sample-media/content.json';
 
+
+/*
+ * Convenience variables to access the CastReceiverContext and PlayerManager.
+ */
 const context = cast.framework.CastReceiverContext.getInstance();
 const playerManager = context.getPlayerManager();
 
-
-const LOG_RECEIVER_TAG = 'Receiver';
+/*
+ * Constant to be used for fetching media by entity from sample repository.
+ */
+const ID_REGEX = '\/?([^\/]+)\/?$';
 
 /**
  * Debug Logger
  */
 const castDebugLogger = cast.debug.CastDebugLogger.getInstance();
+const LOG_RECEIVER_TAG = 'Receiver';
 
-/**
+/*
  * WARNING: Make sure to turn off debug logger for production release as it
  * may expose details of your app.
  * Uncomment below line to enable debug logger, show a 'DEBUG MODE' tag at
@@ -63,7 +68,7 @@ const castDebugLogger = cast.debug.CastDebugLogger.getInstance();
 //   }
 // });
 
-/**
+/*
  * Set verbosity level for Core events.
  */
 castDebugLogger.loggerLevelByEvents = {
@@ -77,14 +82,14 @@ if (!castDebugLogger.loggerLevelByTags) {
   castDebugLogger.loggerLevelByTags = {};
 }
 
-/**
+/*
  * Set verbosity level for custom tag.
  * Enables log messages for error, warn, info and debug.
  */
 castDebugLogger.loggerLevelByTags[LOG_RECEIVER_TAG] =
   cast.framework.LoggerLevel.DEBUG;
 
-/**
+/*
  * Example of how to listen for events on playerManager.
  */
 playerManager.addEventListener(
@@ -98,9 +103,11 @@ playerManager.addEventListener(
     }
 });
 
-/**
- * Example analytics tracking implementation. See cast_analytics.js. Must
- * complete TODO item in google_analytics.js.
+/*
+ * Example analytics tracking implementation. To enable this functionality see
+ * the implmentation and complete the TODO item in ./google_analytics.js. Once
+ * complete uncomment the the calls to startTracking below to enable each
+ * Tracker.
  */
 const adTracker = new AdsTracker();
 const senderTracker = new SenderTracker();
@@ -110,14 +117,15 @@ const contentTracker = new ContentTracker();
 // contentTracker.startTracking();
 
 /**
- * Adds an ad to the beginning of the desired content.
+ * Modifies the provided mediaInformation by adding a pre-roll break clip to it.
  * @param {cast.framework.messages.MediaInformation} mediaInformation The target
- * mediainformation. Usually obtained through a load interceptor.
+ * MediaInformation to be modified.
+ * @return {Promise} An empty promise.
  */
 function addBreaks(mediaInformation) {
   castDebugLogger.debug(LOG_RECEIVER_TAG, "addBreaks: " +
     JSON.stringify(mediaInformation));
-  return fetchMediaById('fbb_ad')
+  return MediaFetcher.fetchMediaById('fbb_ad')
   .then((clip1) => {
     mediaInformation.breakClips = [
       {
@@ -139,44 +147,15 @@ function addBreaks(mediaInformation) {
   });
 }
 
-/**
- * Obtains media from a remote repository.
- * @param  {Number} Entity or ID that contains a key to media in JSON hosted
- * by CONTENT_URL.
- * @return {Promise} Contains the media information of the desired entity.
- */
-function fetchMediaById(id) {
-  castDebugLogger.debug(LOG_RECEIVER_TAG, "fetching id: " + id);
-
-  return new Promise((accept, reject) => {
-    fetch(CONTENT_URL)
-    .then((response) => response.json())
-    .then((obj) => {
-      if (obj) {
-        if (obj[id]) {
-          accept(obj[id]);
-        }
-        else {
-          reject(`${id} not found in repository`);
-        }
-      }
-      else {
-        reject('Content repository not found.');
-      }
-    });
-  });
-}
-
-
-/**
- * Intercept the LOAD request to load and set the contentUrl and add ads.
+/*
+ * Intercept the LOAD request to load and set the contentUrl.
  */
 playerManager.setMessageInterceptor(
   cast.framework.messages.MessageType.LOAD, loadRequestData => {
     castDebugLogger.debug(LOG_RECEIVER_TAG,
       `loadRequestData: ${JSON.stringify(loadRequestData)}`);
-    
-    // If the loadRequestData is incomplete return an error message
+
+    // If the loadRequestData is incomplete, return an error message.
     if (!loadRequestData || !loadRequestData.media) {
       const error = new cast.framework.messages.ErrorData(
         cast.framework.messages.ErrorType.LOAD_FAILED);
@@ -184,7 +163,7 @@ playerManager.setMessageInterceptor(
       return error;
     }
 
-    // check all content source fields for asset URL or ID
+    // Check all content source fields for the asset URL or ID.
     let source = loadRequestData.media.contentUrl
       || loadRequestData.media.entity || loadRequestData.media.contentId;
 
@@ -198,28 +177,23 @@ playerManager.setMessageInterceptor(
 
     let sourceId = source.match(ID_REGEX)[1];
 
-    // Add breaks to the media information and set the contentUrl
-    return addBreaks(loadRequestData.media)
+    // Optionally add breaks to the media information and set the contentUrl.
+    return Promise.resolve()
+    // .then(() => addBreaks(loadRequestData.media)) // Uncomment to enable ads.
     .then(() => {
-      // If the source is a url that points to an asset don't fetch from backend
+      // If the source is a url that points to an asset don't fetch from the
+      // content repository.
       if (sourceId.includes('.')) {
         castDebugLogger.debug(LOG_RECEIVER_TAG,
           "Interceptor received full URL");
         loadRequestData.media.contentUrl = source;
         return loadRequestData;
-      }
-
-      // Fetch the contentUrl if provided an ID or entity URL
-      else {
+      } else {
+        // Fetch the contentUrl if provided an ID or entity URL.
         castDebugLogger.debug(LOG_RECEIVER_TAG, "Interceptor received ID");
-        return fetchMediaById(sourceId)
-        .then((item) => {
-          let metadata = new cast.framework.messages.GenericMediaMetadata();
-          metadata.title = item.title;
-          metadata.subtitle = item.description;
-          loadRequestData.media.contentId = item.stream.dash;
-          loadRequestData.media.contentType = 'application/dash+xml';
-          loadRequestData.media.metadata = metadata;
+        return MediaFetcher.fetchMediaInformationById(sourceId)
+        .then((mediaInformation) => {
+          loadRequestData.media = mediaInformation;
           return loadRequestData;
         })
       }
@@ -234,25 +208,14 @@ playerManager.setMessageInterceptor(
   }
 );
 
-const playbackConfig = new cast.framework.PlaybackConfig();
 
-/**
- * Set the player to start playback as soon as there are five seconds of
- * media content buffered. Default is 10.
- */
-playbackConfig.autoResumeDuration = 5;
-castDebugLogger.info(LOG_RECEIVER_TAG,
-  `autoResumeDuration set to: ${playbackConfig.autoResumeDuration}`);
-
-/**
+/*
  * Set the control buttons in the UI controls.
  */
 const controls = cast.framework.ui.Controls.getInstance();
 controls.clearDefaultSlotAssignments();
 
-/**
- * Assign buttons to control slots.
- */
+// Assign buttons to control slots.
 controls.assignButton(
   cast.framework.ui.ControlsSlot.SLOT_SECONDARY_1,
   cast.framework.ui.ControlsButton.QUEUE_PREV
@@ -270,11 +233,34 @@ controls.assignButton(
   cast.framework.ui.ControlsButton.QUEUE_NEXT
 );
 
-context.start({
-  queue: new CastQueue(),
-  playbackConfig: playbackConfig,
-  supportedCommands: cast.framework.messages.Command.ALL_BASIC_MEDIA |
-                      cast.framework.messages.Command.QUEUE_PREV |
-                      cast.framework.messages.Command.QUEUE_NEXT |
-                      cast.framework.messages.Command.STREAM_TRANSFER
-});
+/*
+ * Configure the CastReceiverOptions.
+ */
+const castReceiverOptions = new cast.framework.CastReceiverOptions();
+
+/*
+ * Set the player configuration.
+ */
+const playbackConfig = new cast.framework.PlaybackConfig();
+playbackConfig.autoResumeDuration = 5;
+castReceiverOptions.playbackConfig = playbackConfig;
+castDebugLogger.info(LOG_RECEIVER_TAG,
+  `autoResumeDuration set to: ${playbackConfig.autoResumeDuration}`);
+
+/* 
+ * Set the SupportedMediaCommands.
+ */
+castReceiverOptions.supportedCommands =
+  cast.framework.messages.Command.ALL_BASIC_MEDIA |
+  cast.framework.messages.Command.QUEUE_PREV |
+  cast.framework.messages.Command.QUEUE_NEXT |
+  cast.framework.messages.Command.STREAM_TRANSFER
+
+/*
+ * Optionally enable a custom queue implementation. Custom queues allow the
+ * receiver app to manage and add content to the playback queue. Uncomment the
+ * line below to enable the queue.
+ */
+// castReceiverOptions.queue = new CastQueue();
+
+context.start(castReceiverOptions);

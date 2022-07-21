@@ -1,5 +1,5 @@
-/*
-Copyright 2020 Google LLC. All Rights Reserved.
+/**
+Copyright 2022 Google LLC. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,13 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
-/**
- * Contains the initialization of the google analytics agent for use
- * in the CastAnalytics sample.
- */
 'use_strict';
 
+/**
+ * Initializes the google analytics agent for use in the receiver sample. To
+ * enable the functionality uncomment the call to google analytics below and
+ * provide your property's
+ * [trackingId](https://support.google.com/analytics/answer/9539598).
+ */
 export function initGoogleAnalytics() {
   (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
   (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),

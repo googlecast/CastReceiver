@@ -1,5 +1,5 @@
-/*
-Copyright 2020 Google LLC. All Rights Reserved.
+/**
+Copyright 2022 Google LLC. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,19 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+'use_strict';
 
-/*
- * Enumeration type for determining the dispatcher of each of the cast events
+/**
+ * Enumeration type for determining the dispatcher of each of the cast events.
  */
 const EventOwner = {
   PLAYER_MANAGER: 1,
   CAST_RECEIVER_CONTEXT: 2
 }
 
-/*
+/**
  * Map for all the supported event types in the CAF SDK to be used by the
- * analytics modules. Note there is one overlapping event (ERROR) on both 
+ * analytics modules. Note there is one overlapping event (ERROR) on both
  * system and standard events. Look at the mapping located in the object.
+ * @enum {[cast.framework.events.EventType|cast.framework.system.EventType,
+ *     EventOwner]}
  */
 const CastEventType = {
   ALL: {event: cast.framework.events.EventType.ALL, owner: EventOwner.PLAYER_MANAGER},

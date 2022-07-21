@@ -1,5 +1,5 @@
-/*
-Copyright 2019 Google LLC. All Rights Reserved.
+/**
+Copyright 2022 Google LLC. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,23 +16,28 @@ limitations under the License.
 
 'use strict';
 
-const LOG_QUEUE_TAG = 'Queue';
+import { MediaFetcher } from './media_fetcher.js';
 
-/**
- * Debug Logger
+/*
+ * Set up Debug Logger constants and instance.
  */
+const LOG_QUEUE_TAG = 'Queue';
 const castDebugLogger = cast.debug.CastDebugLogger.getInstance();
 
 if (!castDebugLogger.loggerLevelByTags) {
   castDebugLogger.loggerLevelByTags = {};
 }
-/**
- * Set verbosity level for custom tag.
- * Enable log messages for error, warn and info.
- */
+
+// Set verbosity level for custom tag.
 castDebugLogger.loggerLevelByTags[LOG_QUEUE_TAG] =
   cast.framework.LoggerLevel.INFO;
 
+/**
+ * Custom implementation of the cast receiver queue. The class overrides
+ * several QueueBase methods to provide extended queueing functionality such as
+ * providing next and previous items in the media queue. Items are populated by
+ * fetching them from a backend repository with sample assets.
+ */
 class CastQueue extends cast.framework.QueueBase {
   constructor() {
     super();
@@ -42,6 +47,7 @@ class CastQueue extends cast.framework.QueueBase {
   * Initializes the queue.
   * @param {!cast.framework.messages.LoadRequestData} loadRequestData
   * @return {!cast.framework.messages.QueueData}
+  * @override
   */
   initialize(loadRequestData) {
     if (loadRequestData) {
@@ -66,30 +72,36 @@ class CastQueue extends cast.framework.QueueBase {
   * are simply appended to the end of the queue.
   * @param {number} referenceItemId
   * @return {!Array<cast.framework.QueueItem>}
+  * @override
   **/
   nextItems(referenceItemId) {
-    // Return sample content.
-    let item = new cast.framework.messages.QueueItem();
-    item.media = new cast.framework.messages.MediaInformation();
-    item.media.entity = 'https://sample.com/videos/bbb';
-    item.media.customData = { "isSuggested": true };
-    return [item];
+    // Fetch and return sample content with populated metadata.
+    return MediaFetcher.fetchMediaInformationById('bbb')
+    .then(mediaInformation => {
+      let item = new cast.framework.messages.QueueItem();
+      item.media = mediaInformation;
+      item.media.customData = { "isSuggested": true };
+      return [item];
+    });
   }
 
   /**
   * Picks a set of items before the reference item id and returns as the items
-  * to be inserted into the queue. WhenvreferenceItemId is omitted, items are
+  * to be inserted into the queue. When referenceItemId is omitted, items are
   * simply appended to beginning of the queue.
   * @param {number} referenceItemId
   * @return {!Array<cast.framework.QueueItem>}
+  * @override
   **/
   prevItems(referenceItemId) {
-    // Return sample content.
-    let item = new cast.framework.messages.QueueItem();
-    item.media = new cast.framework.messages.MediaInformation();
-    item.media.entity = 'https://sample.com/videos/ed';
-    item.media.customData = { "isSuggested": true };
-    return [item];
+    // Fetch and return sample content with populated metadata.
+    return MediaFetcher.fetchMediaInformationById('ed')
+    .then(mediaInformation => {
+      let item = new cast.framework.messages.QueueItem();
+      item.media = mediaInformation;
+      item.media.customData = { "isSuggested": true };
+      return [item];
+    });
   }
 };
 

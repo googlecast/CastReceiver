@@ -1,5 +1,5 @@
-/*
-Copyright 2020 Google LLC. All Rights Reserved.
+/**
+Copyright 2022 Google LLC. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,20 +16,18 @@ limitations under the License.
 
 'use_strict';
 
-/**
- * This sample demonstrates how to acquire and send Cast information to
- * different analytics services
- */
-
-// Imports a mapping of event types for easier reference
 import { CastEventType, EventOwner } from './cast_event_types.js';
+import { initGoogleAnalytics } from './agents/google_analytics.js';
 
 /**
- * Initialize any analytics provider tracking agents.
+ * @fileoverview This sample demonstrates how to acquire and send Cast
+ * information to analytics services such as Google Analytics.
  */
-import { initGoogleAnalytics } from './agents/google_analytics.js';
-initGoogleAnalytics();
 
+/*
+ * Initialize the Google Analytics agent.
+ */
+initGoogleAnalytics();
 
 /**
  * Modules that handle Cast SDK events. The Tracker class is a template for its
@@ -70,23 +68,24 @@ class Tracker {
   }
 
   /**
-   * Template event handler that should be overidden in the child object.
-   * @param  {cast.framework.events.*} event
+   * Template event handler that should be overidden by implementing classes.
+   * @param {cast.framework.events.EventType|cast.framework.system.EventType}
+   *     event The event fired by the SDK to be handled by the tracker.
    */
   handleEvent(event) {}
 
   /**
-   * Template event sender that should be overidden in the child object.
+   * Template event sender that should be overidden by implementing classes.
    * Sends the data collected from the event handler to the target analytics
    * service providers.
+   * @param {Object} data The data to be sent to analytics provider backends.
    */
   sendData(data) {}
 }
 
 /**
- * Child of the tracker class used to handle ad related events and send them to
- * an analytics service. Event data tracked includes quartile ad events, ad
- * loading time, and break tracking.
+ * Handles ad related events and send them to an analytics service. Event data
+ * tracked includes quartile ad events, ad loading time, and break tracking.
  */
 class AdsTracker extends Tracker {
   constructor() {
@@ -116,11 +115,12 @@ class AdsTracker extends Tracker {
 
   /**
    * Handles the incoming event if it is a break event type or time update
-   * while the break is started. When a time update is detected the type is
+   * while the break is started. When a time update is detected, the type is
    * modified to create a custom quartile event with added break and breakClip
    * id for additional context.
-   * @param  {cast.framework.events.BreaksEvent
-   * |cast.framework.events.BreaksEvent.MediaElementEvent} event
+   * @param {cast.framework.events.BreaksEvent|
+   *     cast.framework.events.BreaksEvent.MediaElementEvent} event
+   * @override
    */
   handleEvent(event) {
     // Ignore event if the event is not a break started event
@@ -131,7 +131,7 @@ class AdsTracker extends Tracker {
       return;
     }
 
-    // Control the state of the tracker and send data if break has begun
+    // Control the state of the tracker and send data if break has begun.
     switch (event.type) {
       case CastEventType.TIME_UPDATE.event:
         this.handleTimeUpdate(event);
@@ -148,7 +148,11 @@ class AdsTracker extends Tracker {
     }
   }
 
-  // Handle the break started event. Set flag to begin tracking relevant events.
+  /**
+   * Handle the break started event. Set flag to begin tracking relevant ad
+   * break events.
+   * @param {cast.framework.events.EventType.BREAK_STARTED} event
+   */
   handleBreakStarted(event) {
     let data = {};
     this.breakStarted = true;
@@ -156,15 +160,16 @@ class AdsTracker extends Tracker {
 
     data.action = event.type;
     data.id = event.breakId;
-
-    // Adobe Agent specific values
     data.startTime = event.currentMediaTime;
     data.position = event.index;
 
     this.sendData(data);
   }
 
-  // Handle time update event. Used to report quartile ad events.
+  /**
+   * Handle time update event. Used to report quartile ad events.
+   * @param {cast.framework.events.EventType.TIME_UPDATE} event
+   */
   handleTimeUpdate(event) {
     let data = {};
     let currTime = this.breakManager.getBreakClipCurrentTimeSec();
@@ -186,7 +191,10 @@ class AdsTracker extends Tracker {
     this.sendData(data);
   }
 
-  // Handle break clip started event. Sets up quartile ad tracking.
+  /**
+   * Handle break clip started event. Sets up quartile ad tracking.
+   * @param {cast.framework.events.EventType.BREAK_CLIP_STARTED} event
+   */
   handleBreakClipStarted(event) {
     let data = {};
     this.breakClipStarted = true;
@@ -199,8 +207,6 @@ class AdsTracker extends Tracker {
 
     data.id = this.breakClipId;
     data.action = event.type;
-
-    // Adobe Agent specific values.
     data.position = event.index;
     data.length = this.breakClipLength;
 
@@ -208,7 +214,10 @@ class AdsTracker extends Tracker {
     this.sendData(data);
   }
 
-  // Handle break clip ended event. Resets quartile ad tracking.
+  /**
+   * Handle break clip ended event. Resets quartile ad tracking.
+   * @param {cast.framework.events.EventType.BREAK_CLIP_ENDED} event
+   */
   handleBreakClipEnded(event) {
     let data = {};
     data.id = this.breakClipId;
@@ -223,7 +232,10 @@ class AdsTracker extends Tracker {
     this.sendData(data);
   }
 
-  // Handle break ended event. Reset tracker to ignore events until new break.
+  /**
+   * Handle break ended event. Reset tracker to ignore events until new break.
+   * @param {cast.framework.events.EventType.BREAK_ENDED} event
+   */
   handleBreakEnded(event) {
     let data = {};
     data.id = this.breakId;
@@ -236,8 +248,8 @@ class AdsTracker extends Tracker {
 
   /**
    * Sends the event data to respective analytics agents.
-   * @param  {cast.framework.events.BreaksEvent|
-   * cast.framework.events.BreaksEvent.MediaElementEvent} event
+   * @param  {Object} data
+   * @override
    */
   sendData(data) {
     ga('send', 'event', this.type, data.action, data.id);
@@ -246,9 +258,9 @@ class AdsTracker extends Tracker {
 
 
 /**
- * Child of the tracker class used to profile the types of senders interacting
- * with the receiver. Each sender type is mapped to its senderId through the
- * regular expressions stored in this object.
+ * Tracker that handles profiling the types of senders interacting with the
+ * receiver. Each sender type is mapped to its senderId through the regular
+ * expressions stored in this object.
  */
 class SenderTracker extends Tracker {
   constructor() {
@@ -273,8 +285,17 @@ class SenderTracker extends Tracker {
     }
   }
 
+  /**
+   * Handles the incoming registered event for sender requests and sender
+   * connected events. Each unique sender id is added as a key to the tracker
+   * instance's sender property. The event data is sent when a senderId is
+   * registered for the first time.
+   * @param {cast.framework.events.category.REQUEST|
+   *     cast.framework.system.EventType.SENDER_CONNECTED} event
+   * @override
+   */
   handleEvent(event) {
-    //Map the event senderId to its senderType if not already registered.
+    // Map the event senderId to its senderType if not already registered.
     if (!this.senders[event.senderId]) {
       this.senders[event.senderId] = this.getSenderType(event.senderId);
       let data = {};
@@ -286,7 +307,11 @@ class SenderTracker extends Tracker {
     }
   }
 
-  // Obtains the senderType based on the senderId REGEX defined in this.
+  /**
+   * Obtains the senderType based on the senderId REGEX defined in this class.
+   * @param {string} senderId The sender identifier to be categorized.
+   * @return {string} The sender type identified.
+   */
   getSenderType(senderId) {
     let senderType = null;
     Object.entries(this.SenderIdRegex).forEach(([currType, regex]) => {
@@ -298,6 +323,11 @@ class SenderTracker extends Tracker {
     return senderType || "OTHER_SENDER";
   }
 
+  /**
+   * Sends the event data to respective analytics agents.
+   * @param  {Object} data
+   * @override
+   */
   sendData(data) {
     ga('send', 'event', this.type, data.action, data.senderType);
   }
@@ -305,9 +335,9 @@ class SenderTracker extends Tracker {
 
 
 /**
- * Child of the tracker class. Used to determine if loaded content is suggested
- * or selected by the user. Requires the loaded media to have customData with
- * property isSuggested.
+ * Tracker that determines if the loaded content is suggested by the queue or
+ * selected by the user. Detection requires that the loaded media to have
+ * customData with the property isSuggested.
  */
 class ContentTracker extends Tracker {
   constructor() {
@@ -317,6 +347,12 @@ class ContentTracker extends Tracker {
     ];
   }
 
+  /**
+   * Handles the registered event. Checks the customData of the media for its
+   * isSuggested property to determine if the content is suggested or not.
+   * @param {cast.framework.events.EventType.PLAYER_LOAD_COMPLETE} event
+   * @override
+   */
   handleEvent(event) {
     let data = {};
 
@@ -335,6 +371,11 @@ class ContentTracker extends Tracker {
     this.sendData(data);
   }
 
+  /**
+   * Sends the event data to respective analytics agents.
+   * @param  {Object} data
+   * @override
+   */
   sendData(data) {
     ga('send', 'event', this.type, data.action, data.id);
   }
